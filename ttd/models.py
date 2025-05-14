@@ -2,12 +2,39 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-base_classifier = nn.Sequential(
+
+hidden_dim = 1280
+num_classes = 2
+basic_classifier = nn.Sequential(
             nn.Linear(hidden_dim, 128),
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(128, num_classes)
         )
+class BaseEncoder(nn.Module):
+    def __init__(self, client, output: str = "sequence"):
+        """
+        output: 'sequence' (default) or 'tokens'
+        """
+        super().__init__()
+        self.client = client
+        assert output in ["sequence", "tokens"], "output must be 'sequence' or 'tokens'"
+        self.output = output
+
+    def forward(self, protein_tensor):
+        """
+        protein_tensor: encoded tensor from client.encode(ESMProtein or batch)
+        """
+        logits_output = self.client.logits(
+            protein_tensor,
+            LogitsConfig(sequence=True, return_embeddings=True)
+        )
+
+        # logits_output shape: [batch, seq_len, embedding_dim]
+        if self.output == "tokens":
+            return logits_output
+        else:
+            return logits_output.mean(dim=1)  # [batch, embedding_dim]
 
 class BaseModel(nn.Module):
     def __init__(self, encoder: nn.Module, classifier: nn.Module = base_classifier, hidden_dim: int, num_classes: int):
