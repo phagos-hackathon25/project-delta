@@ -37,7 +37,7 @@ class BaseEncoder(nn.Module):
             return logits_output.mean(dim=1)  # [batch, embedding_dim]
 
 class BaseModel(nn.Module):
-    def __init__(self, encoder: nn.Module, classifier: nn.Module = base_classifier, hidden_dim: int, num_classes: int):
+    def __init__(self, encoder: nn.Module, classifier: nn.Module, hidden_dim: int, num_classes: int):
         """
         encoder: pre-trained model (e.g., ESM, Evo, etc.)
         hidden_dim: dimension of output embedding from encoder
