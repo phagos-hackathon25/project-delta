@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from esm.sdk.api import ESMProtein, LogitsConfig
+from typing import Dict
 
-
-hidden_dim = 1280
+hidden_dim = 960
 num_classes = 2
 basic_classifier = nn.Sequential(
             nn.Linear(hidden_dim, 128),
@@ -11,7 +12,8 @@ basic_classifier = nn.Sequential(
             nn.Dropout(0.3),
             nn.Linear(128, num_classes)
         )
-class BaseEncoder(nn.Module):
+
+class ESMEncoder(nn.Module):
     def __init__(self, client, output: str = "sequence"):
         """
         output: 'sequence' (default) or 'tokens'
@@ -21,14 +23,15 @@ class BaseEncoder(nn.Module):
         assert output in ["sequence", "tokens"], "output must be 'sequence' or 'tokens'"
         self.output = output
 
-    def forward(self, protein_tensor):
+    def forward(self, protein: ESMProtein):
         """
         protein_tensor: encoded tensor from client.encode(ESMProtein or batch)
         """
+        protein_tensor = self.client.encode(protein)
         logits_output = self.client.logits(
             protein_tensor,
             LogitsConfig(sequence=True, return_embeddings=True)
-        )
+        ).embeddings
 
         # logits_output shape: [batch, seq_len, embedding_dim]
         if self.output == "tokens":
@@ -36,40 +39,52 @@ class BaseEncoder(nn.Module):
         else:
             return logits_output.mean(dim=1)  # [batch, embedding_dim]
 
+import os
+import torch
+import hashlib
+
 class BaseModel(nn.Module):
-    def __init__(self, encoder: nn.Module, classifier: nn.Module, hidden_dim: int, num_classes: int):
-        """
-        encoder: pre-trained model (e.g., ESM, Evo, etc.)
-        hidden_dim: dimension of output embedding from encoder
-        num_classes: number of target classes
-        """
+    def __init__(self, encoder: nn.Module, classifier: nn.Module, cache_dir: str = "./embedding_cache"):
         super(BaseModel, self).__init__()
         self.encoder = encoder
         self.classifier = classifier
+        self._cache: Dict[str, torch.Tensor] = {}
+        self.cache_dir = cache_dir
+        os.makedirs(self.cache_dir, exist_ok=True)
+
+    def _get_cache_path(self, protein_id: str) -> str:
+        # Use SHA1 to avoid filesystem issues
+        filename = hashlib.sha1(protein_id.encode()).hexdigest() + ".pt"
+        return os.path.join(self.cache_dir, filename)
+
+    def encode_with_cache(self, protein):
+        protein_id = getattr(protein, "id", None) or protein.sequence
+        cache_path = self._get_cache_path(protein_id)
+
+        if protein_id in self._cache:
+            return self._cache[protein_id]
+
+        if os.path.exists(cache_path):
+            embedding = torch.load(cache_path)
+            self._cache[protein_id] = embedding
+            return embedding
+
+        with torch.no_grad():
+            embedding = self.encoder(protein).detach()
+            torch.save(embedding, cache_path)
+            self._cache[protein_id] = embedding
+            return embedding
 
     def forward(self, x, attention_mask=None):
-        """
-        x: input sequences (tokenized)
-        attention_mask: optional, for models like Evo
-        """
-        # Get embedding from encoder
-        if attention_mask is not None:
-            outputs = self.encoder(x, attention_mask=attention_mask)
+        if isinstance(x, list):
+            hidden = torch.stack([self.encode_with_cache(p) for p in x])
         else:
-            outputs = self.encoder(x)
-
-        # Use mean pooling over tokens if needed
-        if isinstance(outputs, tuple):
-            hidden = outputs[0]  # (batch, seq_len, hidden)
-        else:
-            hidden = outputs  # (batch, hidden)
+            hidden = self.encode_with_cache(x)
 
         if hidden.ndim == 3:
-            hidden = hidden.mean(dim=1)  # average across sequence
+            hidden = hidden.mean(dim=1)  # mean pooling over tokens
 
-        # Classification head
-        logits = self.classifier(hidden)
-        return logits
+        return self.classifier(hidden)
 
     def predict(self, x, attention_mask=None):
         logits = self.forward(x, attention_mask)
