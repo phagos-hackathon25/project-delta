@@ -9,7 +9,7 @@ This repository contains the codebase, notebooks, and models developed during th
  
 📄 **[Click here to read our slides](https://github.com/phagos-hackathon25/project-delta/blob/main/team-delta.pdf)** presenting the full story behind our project.
 
-Get a concise overview of our methodology, data insights, model architecture, saliency maps, and biological validation — all in one place.
+#### Get a concise overview of our methodology, data insights, model architecture, saliency maps, and biological validation — all in one place.
 ---
 
 ### 🚀 Project Overview
