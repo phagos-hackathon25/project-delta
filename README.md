@@ -63,7 +63,7 @@ Given a collection of phages isolated to target an unknown bacterial infection (
 ### 📚 References
 - Boeckaerts et al. (2024) — *PHL-Klebsiella* Dataset.
 - ESM-C (Meta AI, 2024) — 6B parameter protein language model.
-- Phagos x AWS Hackdays 2025 — [Event Info](https://phagos.org/hackathon2025)
+- Phagos x AWS Hackdays 2025 — [Event Info](https://hackathon.phagos.org/)
 
 ---
 
