@@ -5,6 +5,11 @@
 
 This repository contains the codebase, notebooks, and models developed during the **Phagos x AWS Hackdays 2025** by **Team Delta (Train Tune Deploy)**. Our goal was to identify bacteriophage proteins with strong lytic activity, leveraging **LLMs**, **transfer learning**, and **protein embeddings**, with a focus on **Klebsiella-targeting phages**.
 
+## 🖥️ Slide Deck
+ 
+📄 **[Click here to read our slides](https://github.com/phagos-hackathon25/project-delta/blob/main/team-delta.pdf)** presenting the full story behind our project.
+
+Get a concise overview of our methodology, data insights, model architecture, saliency maps, and biological validation — all in one place.
 ---
 
 ### 🚀 Project Overview
